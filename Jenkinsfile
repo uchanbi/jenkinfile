@@ -1,17 +1,22 @@
-node("docker") {
-    docker.withRegistry('bihanc', 'docker-hub') {
-    
-        git url: "https://github.com/uchanbi/test-app.git", credentialsId: 'github'
-    
-        sh "git rev-parse HEAD > .git/commit-id"
-        def commit_id = readFile('.git/commit-id').trim()
-        println commit_id
-    
-        stage "build"
-        def app = docker.build "airport"
-    
-        stage "publish"
-        app.push 'master'
-        app.push "${commit_id}"
+pipeline {
+    agent any
+    stages {
+        stage('build') {
+            steps {
+                git branch: 'master', credentialsId: 'github', url: 'https://github.com/uchanbi/test-app.git'
+                sh 'mvn clean package'
+            }
+        }
+        stage('verify') {
+            steps {
+                sh 'ls -alF target'
+            }
+        }        
+        stage('docker') {
+                withDockerRegistry([credentialsId: 'docker-hub', url: 'https://hub.docker.com']) {
+                    def app = docker.build("bihanc/jenkins",'.')
+                    app.push()
+                }
+        }
     }
 }
